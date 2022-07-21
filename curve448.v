@@ -957,59 +957,24 @@ Definition f_curve448Red := {|
                (_t'1, tuint) :: nil);
   fn_body :=
 (Ssequence
+  (Sset _temp (Ecast (Econst_int (Int.repr 1) tint) tulong))
   (Ssequence
     (Ssequence
-      (Sset _temp (Ecast (Econst_int (Int.repr 1) tint) tulong))
-      (Sset _i (Econst_int (Int.repr 0) tint)))
-    (Sloop
-      (Ssequence
-        (Sifthenelse (Ebinop Olt (Etempvar _i tuint)
-                       (Econst_int (Int.repr 7) tint) tint)
-          Sskip
-          Sbreak)
-        (Ssequence
-          (Ssequence
-            (Sset _t'2
-              (Ederef
-                (Ebinop Oadd (Etempvar _a (tptr tuint)) (Etempvar _i tuint)
-                  (tptr tuint)) tuint))
-            (Sset _temp
-              (Ebinop Oadd (Etempvar _temp tulong) (Etempvar _t'2 tuint)
-                tulong)))
-          (Ssequence
-            (Sassign
-              (Ederef
-                (Ebinop Oadd (Evar _b (tarray tuint 14)) (Etempvar _i tuint)
-                  (tptr tuint)) tuint)
-              (Ebinop Oand (Etempvar _temp tulong)
-                (Econst_int (Int.repr (-1)) tuint) tulong))
-            (Sset _temp
-              (Ebinop Oshr (Etempvar _temp tulong)
-                (Econst_int (Int.repr 32) tint) tulong)))))
-      (Sset _i
-        (Ebinop Oadd (Etempvar _i tuint) (Econst_int (Int.repr 1) tint)
-          tuint))))
-  (Ssequence
-    (Ssequence
-      (Ssequence
-        (Sset _temp
-          (Ebinop Oadd (Etempvar _temp tulong) (Econst_int (Int.repr 1) tint)
-            tulong))
-        (Sset _i (Econst_int (Int.repr 7) tint)))
+      (Sset _i (Econst_int (Int.repr 0) tint))
       (Sloop
         (Ssequence
           (Sifthenelse (Ebinop Olt (Etempvar _i tuint)
-                         (Econst_int (Int.repr 14) tint) tint)
+                         (Econst_int (Int.repr 7) tint) tint)
             Sskip
             Sbreak)
           (Ssequence
             (Ssequence
-              (Sset _t'1
+              (Sset _t'2
                 (Ederef
                   (Ebinop Oadd (Etempvar _a (tptr tuint)) (Etempvar _i tuint)
                     (tptr tuint)) tuint))
               (Sset _temp
-                (Ebinop Oadd (Etempvar _temp tulong) (Etempvar _t'1 tuint)
+                (Ebinop Oadd (Etempvar _temp tulong) (Etempvar _t'2 tuint)
                   tulong)))
             (Ssequence
               (Sassign
@@ -1025,20 +990,56 @@ Definition f_curve448Red := {|
           (Ebinop Oadd (Etempvar _i tuint) (Econst_int (Int.repr 1) tint)
             tuint))))
     (Ssequence
-      (Sset _h
-        (Ebinop Oadd (Etempvar _h tuint)
-          (Ebinop Osub (Ecast (Etempvar _temp tulong) tuint)
-            (Econst_int (Int.repr 1) tint) tuint) tuint))
-      (Scall None
-        (Evar _curve448Select (Tfunction
-                                (Tcons (tptr tuint)
-                                  (Tcons (tptr tuint)
-                                    (Tcons (tptr tuint) (Tcons tuint Tnil))))
-                                tvoid cc_default))
-        ((Etempvar _r (tptr tuint)) :: (Evar _b (tarray tuint 14)) ::
-         (Etempvar _a (tptr tuint)) ::
-         (Ebinop Oand (Etempvar _h tuint) (Econst_int (Int.repr 1) tint)
-           tuint) :: nil)))))
+      (Sset _temp
+        (Ebinop Oadd (Etempvar _temp tulong) (Econst_int (Int.repr 1) tint)
+          tulong))
+      (Ssequence
+        (Ssequence
+          (Sset _i (Econst_int (Int.repr 7) tint))
+          (Sloop
+            (Ssequence
+              (Sifthenelse (Ebinop Olt (Etempvar _i tuint)
+                             (Econst_int (Int.repr 14) tint) tint)
+                Sskip
+                Sbreak)
+              (Ssequence
+                (Ssequence
+                  (Sset _t'1
+                    (Ederef
+                      (Ebinop Oadd (Etempvar _a (tptr tuint))
+                        (Etempvar _i tuint) (tptr tuint)) tuint))
+                  (Sset _temp
+                    (Ebinop Oadd (Etempvar _temp tulong)
+                      (Etempvar _t'1 tuint) tulong)))
+                (Ssequence
+                  (Sassign
+                    (Ederef
+                      (Ebinop Oadd (Evar _b (tarray tuint 14))
+                        (Etempvar _i tuint) (tptr tuint)) tuint)
+                    (Ebinop Oand (Etempvar _temp tulong)
+                      (Econst_int (Int.repr (-1)) tuint) tulong))
+                  (Sset _temp
+                    (Ebinop Oshr (Etempvar _temp tulong)
+                      (Econst_int (Int.repr 32) tint) tulong)))))
+            (Sset _i
+              (Ebinop Oadd (Etempvar _i tuint) (Econst_int (Int.repr 1) tint)
+                tuint))))
+        (Ssequence
+          (Sset _h
+            (Ebinop Oadd (Etempvar _h tuint)
+              (Ebinop Osub (Ecast (Etempvar _temp tulong) tuint)
+                (Econst_int (Int.repr 1) tint) tuint) tuint))
+          (Scall None
+            (Evar _curve448Select (Tfunction
+                                    (Tcons (tptr tuint)
+                                      (Tcons (tptr tuint)
+                                        (Tcons (tptr tuint)
+                                          (Tcons tuint Tnil)))) tvoid
+                                    cc_default))
+            ((Etempvar _r (tptr tuint)) :: (Evar _b (tarray tuint 14)) ::
+             (Etempvar _a (tptr tuint)) ::
+             (Ebinop Oand (Etempvar _h tuint) (Econst_int (Int.repr 1) tint)
+               tuint) :: nil)))))))
 |}.
 
 Definition f_curve448Inv := {|
