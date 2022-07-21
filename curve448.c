@@ -566,7 +566,7 @@ void curve448Swap(uint32_t *a, uint32_t *b, uint32_t c)
  * @param[out] r Pointer to the destination integer
  * @param[in] a Pointer to the first source integer
  * @param[in] b Pointer to the second source integer
- * @param[in] c Condition variable
+ * @param[in] c Condition variable, either 0 or 1
  **/
 
 void curve448Select(uint32_t *r, const uint32_t *a, const uint32_t *b,
@@ -579,6 +579,7 @@ void curve448Select(uint32_t *r, const uint32_t *a, const uint32_t *b,
    mask = c - 1;
 
    //Select between A and B
+   //If c = 0, select A, else select B
    for(i = 0; i < 14; i++)
    {
       //Constant time implementation
