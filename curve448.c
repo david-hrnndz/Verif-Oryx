@@ -72,7 +72,8 @@ void curve448Add(uint32_t *r, const uint32_t *a, const uint32_t *b)
    uint64_t temp;
 
    //Compute R = A + B
-   for(temp = 0, i = 0; i < 14; i++)
+   temp = 0; 
+   for(i = 0; i < 14; i++)
    {
       temp += a[i];
       temp += b[i];
@@ -98,7 +99,8 @@ void curve448AddInt(uint32_t *r, const uint32_t *a, uint32_t b)
    uint64_t temp;
 
    //Compute R = A + B
-   for(temp = b, i = 0; i < 14; i++)
+   temp = b; 
+   for(i = 0; i < 14; i++)
    {
       temp += a[i];
       r[i] = temp & 0xFFFFFFFF;
@@ -123,7 +125,8 @@ void curve448Sub(uint32_t *r, const uint32_t *a, const uint32_t *b)
    int64_t temp;
 
    //Compute R = A + (2^448 - 2^224 - 1) - B
-   for(temp = -1, i = 0; i < 7; i++)
+   temp = -1; 
+   for(i = 0; i < 7; i++)
    {
       temp += a[i];
       temp -= b[i];
@@ -239,7 +242,8 @@ void curve448Mul(uint32_t *r, const uint32_t *a, const uint32_t *b)
    }
 
    //Perform fast modular reduction (first pass)
-   for(temp = 0, i = 0; i < 7; i++)
+   temp = 0; 
+   for(i = 0; i < 7; i++)
    {
       temp += u[i];
       temp += u[i + 14];
@@ -293,7 +297,8 @@ void curve448MulInt(uint32_t *r, const uint32_t *a, uint32_t b)
    uint32_t u[14];
 
    //Compute R = A * B
-   for(temp = 0, i = 0; i < 14; i++)
+   temp = 0; 
+   for(i = 0; i < 14; i++)
    {
       temp += (uint64_t) a[i] * b;
       u[i] = temp & 0xFFFFFFFF;
@@ -369,14 +374,15 @@ void curve448Red(uint32_t *r, const uint32_t *a, uint32_t h)
    uint32_t b[14];
 
    //Compute B = A - (2^448 - 2^224 - 1)
-   for(temp = 1, i = 0; i < 7; i++)
+   temp = 1;
+   for(i = 0; i < 7; i++)
    {
       temp += a[i];
       b[i] = temp & 0xFFFFFFFF;
       temp >>= 32;
    }
-
-   for(temp += 1, i = 7; i < 14; i++)
+   temp += 1;
+   for(i = 7; i < 14; i++)
    {
       temp += a[i];
       b[i] = temp & 0xFFFFFFFF;
