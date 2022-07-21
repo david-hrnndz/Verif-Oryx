@@ -11,64 +11,97 @@ Local Open Scope Z.
 
 Definition curve448Select_spec : ident * funspec :=
 DECLARE _curve448Select
-WITH a : val,
-     sha : share,
-     contents_a : list val,
-     b : Z,
+WITH r : val, shr : share, contents_r : list val,
+     a : val, contents_a : list Z,
+     b : val, contents_b : list Z,
+     c : Z,
      gv : globals
-PRE [ tptr tuint, tuint ]
-    PROP   (writable_share sha;
-            Zlength contents_a = 14)
-    PARAMS (a ; Vint(Int.repr b)) GLOBALS (gv)
-    SEP    (data_at sha (tarray tuint 14) contents_a a)
+PRE [ tptr tuint, tptr tuint, tptr tuint, tuint ]
+    PROP   (writable_share shr;
+            Zlength contents_r = 14;
+            Zlength contents_a = 14;
+            Zlength contents_b = 14;
+            c = 0 \/ c = 1)
+    PARAMS (r ; a ; b ; Vint(Int.repr c)) GLOBALS (gv)
+    SEP    (data_at shr (tarray tuint 14) contents_r r;
+            data_at Tsh (tarray tuint 14) (map Vint (map Int.repr contents_a)) a;
+            data_at Tsh (tarray tuint 14) (map Vint (map Int.repr contents_b)) b)
 POST [ tvoid ]
     PROP   ()
     RETURN ()
-    SEP    (data_at sha (tarray tuint 14) (map Vint (map Int.repr (b :: (Zrepeat 0 13)))) a).
+    SEP    (data_at shr (tarray tuint 14) (map Vint (map Int.repr 
+                (if (Z.to_nat c) then contents_a else contents_b))) r;
+            data_at Tsh (tarray tuint 14) (map Vint (map Int.repr contents_a)) a;
+            data_at Tsh (tarray tuint 14) (map Vint (map Int.repr contents_b)) b).
 
-Definition curve448SetInt_INV a sha contents_a b := 
+Definition curve448Select_INV r shr (contents_r : list val) a contents_a b contents_b c := 
 (EX i : Z,
-(PROP   (writable_share sha; 
-        Zlength contents_a = 14)
-LOCAL   (temp _a a)
-SEP     (data_at sha (tarray tuint 14) 
-            ([Vint (Int.repr b)] ++ (Zrepeat (Vint (Int.repr 0)) (i-1)) ++
-              sublist.sublist i 14 contents_a) a
+(PROP   (writable_share shr; 
+         Zlength contents_r = 14;
+         Zlength contents_a = 14;
+         Zlength contents_b = 14)
+LOCAL   (temp _r r; temp _a a; temp _b b; temp _mask (Vint(Int.repr (c-1))))
+SEP     (data_at shr (tarray tuint 14) 
+            (sublist.sublist 0 i (map Vint (map Int.repr 
+              (if (Z.to_nat c) then contents_a else contents_b)))
+            ++ sublist.sublist i 14 contents_r) r;
+        data_at Tsh (tarray tuint 14) (map Vint (map Int.repr contents_a)) a;
+        data_at Tsh (tarray tuint 14) (map Vint (map Int.repr contents_b)) b
         )))%assert.
 
-Lemma L1 (h x : val) (l : list val) (i : Z) :
-1 <= i -> upd_Znth i ([h] ++ l) x = [h] ++ (upd_Znth (i-1) l) x.
-Proof. intros. list_simplify. Qed.
+Definition Gprog : funspecs := ltac:(with_library prog [ curve448Select_spec ]).
 
-Lemma L2 (i : Z) (l1 l2 : list val) (x : val) :
-Zlength l1 <= i ->
-upd_Znth i (l1 ++ l2) x = l1 ++ (upd_Znth (i-(Zlength l1)) l2) x.
-Proof. intros. list_simplify. Qed.
-
-Lemma L3 (x h : val) (l : list val):
-upd_Znth 0 ([h] ++ l) x  = [x] ++ l.
-Proof. list_simplify. Qed.
-
-Definition Gprog : funspecs := ltac:(with_library prog [ curve448SetInt_spec ]).
-
-Lemma body_curve448SetInt : semax_body Vprog Gprog f_curve448SetInt curve448SetInt_spec.
+Lemma body_curve448SetInt : semax_body Vprog Gprog f_curve448Select curve448Select_spec.
 Proof.
     start_function.
+    destruct H2.
+    * (* Case c = 0 *)
     forward.
-    forward_for_simple_bound 14 (curve448SetInt_INV a sha contents_a b).
+    forward_for_simple_bound 14 
+    (curve448Select_INV r shr contents_r a contents_a b contents_b c);
+    rewrite H2; autorewrite with norm.
     -   entailer!.
-        replace (upd_Znth 0 contents_a (Vint (Int.repr b))) with ([Vint (Int.repr b)] ++
-        Zrepeat (Vint (Int.repr 0)) (1 - 1) ++ sublist.sublist 1 14 contents_a)
-        by list_simplify; cancel.
-    -   forward.
+        autorewrite with sublist; cancel.
+    -   repeat forward.
         entailer!.
-        replace (upd_Znth i ([Vint (Int.repr b)] ++ Zrepeat (Vint (Int.repr 0)) (i - 1) 
-        ++ sublist.sublist i 14 contents_a) (Vint (Int.repr 0))) with 
-        ([Vint (Int.repr b)] ++ Zrepeat (Vint (Int.repr 0)) (i + 1 - 1) ++
-        sublist.sublist (i + 1) 14 contents_a) by list_simplify; cancel.
+        simpl.
+        replace (0 - 1) with (-1) by lia.
+        rewrite Z.land_m1_r.
+        replace (Int.not (Int.repr (-1))) with (Int.zero) by easy.
+        rewrite Int.and_zero, Int.or_zero.
+        autorewrite with sublist.
+        replace (sublist.sublist 0 i (map Vint (map Int.repr contents_a)) ++
+        upd_Znth 0 (sublist.sublist i 14 contents_r)
+        (Vint (Int.repr (Znth i contents_a))))
+        with  
+        (sublist.sublist 0 (i + 1) (map Vint (map Int.repr contents_a)) ++
+        sublist.sublist (i + 1) 14 contents_r)
+        by list_simplify; cancel.
     -   entailer!.
-        replace ([Vint (Int.repr b)] ++
-        Zrepeat (Vint (Int.repr 0)) (14 - 1) ++ sublist.sublist 14 14 contents_a) with 
-        (Vint (Int.repr b) :: map Vint (map Int.repr (Zrepeat 0 13))) by list_simplify;
-        cancel.
+        simpl. 
+        autorewrite with sublist; cancel.
+    * (* Case c = 0 *)
+    forward.
+    forward_for_simple_bound 14 
+    (curve448Select_INV r shr contents_r a contents_a b contents_b c);
+    rewrite H2; autorewrite with norm.
+    -   entailer!.
+        simpl; autorewrite with sublist; cancel.
+    -   repeat forward. 
+        entailer!.
+        simpl.
+        replace (1 - 1) with 0 by lia.
+        rewrite Z.land_0_r.
+        unfold Int.not.
+        rewrite Int.xor_zero_l, Int.and_mone, Int.or_zero_l.
+        replace (upd_Znth i
+        (sublist.sublist 0 i (map Vint (map Int.repr contents_b)) ++
+         sublist.sublist i 14 contents_r) (Vint (Int.repr (Znth i contents_b))))
+        with 
+        (sublist.sublist 0 (i + 1) (map Vint (map Int.repr contents_b)) ++
+        sublist.sublist (i + 1) 14 contents_r)
+        by list_simplify; cancel.
+    -   entailer!.
+        simpl.
+        autorewrite with sublist; cancel.   
 Qed.
