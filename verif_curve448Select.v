@@ -51,7 +51,7 @@ SEP     (data_at shr (tarray tuint 14)
 
 Definition Gprog : funspecs := ltac:(with_library prog [ curve448Select_spec ]).
 
-Lemma body_curve448SetInt : semax_body Vprog Gprog f_curve448Select curve448Select_spec.
+Lemma body_curve448Select : semax_body Vprog Gprog f_curve448Select curve448Select_spec.
 Proof.
     start_function.
     destruct H2.
