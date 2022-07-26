@@ -73,9 +73,46 @@ SEP     ( (* What is the loop invariant?
                 Idea: 
                  If c = 0, then a = a and b = b.
                  If c = 1, then a and b are partially swapped up to index i. *)
-         data_at Tsh (tarray tuint 14) (map Vint (map Int.repr contents_a)) a;
-         data_at Tsh (tarray tuint 14) (map Vint (map Int.repr contents_b)) b
+         if (Z.eqb c 0) then (
+            data_at Tsh (tarray tuint 14) (map Vint (map Int.repr contents_a)) a
+         )
+         else  (
+            data_at Tsh (tarray tuint 14) 
+            ((sublist.sublist 0 i (map Vint (map Int.repr contents_b)))
+            ++ sublist.sublist i 14 (map Vint (map Int.repr contents_a)))
+            a
+               );
+         if (Z.eqb c 0) then (
+            data_at Tsh (tarray tuint 14) (map Vint (map Int.repr contents_b)) b
+         )
+         else (
+            data_at Tsh (tarray tuint 14) 
+            ((sublist.sublist 0 i (map Vint (map Int.repr contents_a)))
+            ++ sublist.sublist i 14 (map Vint (map Int.repr contents_b)))
+            b
+         )
         )))%assert.
+
+Definition Gprog : funspecs := ltac:(with_library prog [ curve448Swap_spec ]).
+
+Lemma body_curve448Swap : semax_body Vprog Gprog f_curve448Swap curve448Swap_spec.
+Proof.
+   start_function.
+   forward.
+   forward_for_simple_bound 14 (curve448Swap_INV a contents_a b contents_b c).
+   entailer!.
+   destruct H1.
+   rewrite H1. 
+   f_equal.
+   autorewrite with norm. 
+   replace (1 mod 2) with (1) by easy.
+   replace (1-1) with (0) by easy.
+   unfold Int.add.
+   f_equal.
+   unfold Int.unsigned.
+   
+
+        
 
 
 (* TESTING THIS IN C COMPILER:

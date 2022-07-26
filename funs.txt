@@ -27,7 +27,7 @@ curve448Sqrt
 curve448Copy
     - Done. 
 curve448Swap
-    - Started specification. 
+    - Started proof. 
 curve448Select
     - Done. 
 curve448Comp
