@@ -1,0 +1,34 @@
+curve448SetInt
+    - Done.
+curve448Add
+    - 
+curve448AddInt
+    - 
+curve448Sub
+    - 
+curve448SubInt
+    - 
+curve448Mul
+    - 
+curve448MulInt
+    - 
+curve448Sqr
+    - 
+curve448Pwr2
+    - 
+curve448Red
+    - In progress. 
+        Bitwise shift is happening and need to show it makes an
+        integer equal 1. 
+curve448Inv
+    - 
+curve448Sqrt
+    - 
+curve448Copy
+    - Done. 
+curve448Swap
+    - Started specification. 
+curve448Select
+    - Done. 
+curve448Comp
+    - In progress.

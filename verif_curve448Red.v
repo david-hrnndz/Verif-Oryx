@@ -12,8 +12,10 @@ Local Open Scope Z.
 
 
 Definition prime: Z := 2^448 - 2^224 - 1.
-About list_repeat. 
-Definition undef14 := [Vundef;Vundef;Vundef;Vundef;Vundef;Vundef;Vundef;Vundef;Vundef;Vundef;Vundef;Vundef;Vundef;Vundef].
+ 
+Definition undef14 := 
+       [Vundef; Vundef; Vundef; Vundef; Vundef; Vundef; Vundef; 
+        Vundef; Vundef; Vundef; Vundef; Vundef; Vundef; Vundef].
 
 Definition curve448Red_spec : ident * funspec :=
 DECLARE _curve448Red
@@ -45,7 +47,8 @@ Definition curve448Red_INV_1    (a : val)  (contents_a : list Z)
     (EX i : Z,
     (PROP   (Zlength contents_a = 14)
     LOCAL   (temp _temp (Vlong (Int64.repr (Int.signed (Int.repr 1))));
-            lvar _b (tarray tuint 14) b; gvars gv; 
+            lvar _b (tarray tuint 14) b; 
+            gvars gv; 
             temp _a a; temp _h (Vint (Int.repr h)))
     SEP     ( 
                 data_at_ shr (tarray tuint 14) r;
@@ -70,5 +73,32 @@ Proof.
     try repeat forward.
     entailer!.
     unfold Int64.shru.
-     
-    rewrite functional_extensionality. 
+    remember (1 + Int.unsigned (Int.repr (Znth i contents_a))) as one_plus_a.
+    autorewrite with norm. 
+    try repeat f_equal.
+    (* Need to show that 1 = (1 + ith term in contents a) shifted 32 bits. *)
+    admit.
+    assert (data_at Tsh (tarray tuint 14)
+    (upd_Znth i
+       (sublist.sublist 0 i
+          (map Vint
+             (map Int.repr (int_to_list (list_to_int contents_a mod prime)))) ++
+        sublist.sublist i 14 undef14)
+       (Vint
+          (Int.repr
+             (Int64.unsigned
+                (Int64.repr
+                   (Z.land (1 + Int.unsigned (Int.repr (Znth i contents_a)))
+                      (Int.unsigned (Int.repr (-1))))))))) v_b
+  = data_at Tsh (tarray tuint 14)
+        (sublist.sublist 0 (i + 1)
+           (map Vint
+              (map Int.repr (int_to_list (list_to_int contents_a mod prime)))) ++
+         sublist.sublist (i + 1) 14 undef14) v_b).
+    f_equal.
+    Check Z.land.
+    (* Compute Int.unsigned (Int.repr (-1)). *)
+    destruct (1 + Int.unsigned (Int.repr (Znth i contents_a))). 
+    replace (Z.land 0 (Int.unsigned (Int.repr (-1)))) with (0) by auto. 
+    autorewrite with norm. 
+    (* Hmmmm *)
