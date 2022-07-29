@@ -73,9 +73,20 @@ Definition curve448Red_INV_1    (a : val)  (contents_a : list Z)
                 
 Definition Gprog : funspecs := ltac:(with_library prog [ curve448Red_spec ]).
 
-Lemma L1 (i : Z) (a : list Z) : allprev_mone (i + 1) a = 
+
+Lemma L1 (i : Z) (a : list Z) : 0 <= i -> 
+   allprev_mone (i + 1) a = 
    Int.eq (Int.repr (Znth i a)) Int.mone && allprev_mone i a.
-Admitted.
+Proof.
+   intros.
+   unfold allprev_mone.
+   replace (i + 1) with (Z.succ i) by easy.
+   rewrite Z2Nat.inj_succ by apply H.
+   assert (i = Z.of_nat (Z.to_nat i)).
+      rewrite Z2Nat.id; auto.
+   rewrite H0 at 2.
+   induction (Z.to_nat i); auto.
+Qed.
 
 Lemma L2 :
 Int64.add Int64.one (Int64.repr (Int.modulus - 1)) = Int64.repr Int.modulus.
@@ -85,11 +96,11 @@ Lemma L3 (z : Z) :
 0 <= z < Int64.modulus -> Int64.unsigned (Int64.repr z) = z.
 Admitted.
 
-Lemma L5 (z : Z) :
+Lemma L4 (z : Z) :
 Int.eq (Int.repr z) Int.mone = false -> z mod Int.modulus < Int.modulus - 1.
 Admitted.
 
-Lemma L6 (z n : Z) : 0 <= z < two_p n ->
+Lemma L5 (z n : Z) : 0 <= z < two_p n ->
    Int64.shru (Int64.repr z) (Int64.repr n) = Int64.zero.
 Admitted.
 
@@ -103,7 +114,7 @@ Proof.
    apply derives_refl.
    repeat forward.
    entailer!.
-   rewrite L1.
+   rewrite L1 by easy.
    destruct (allprev_mone i contents_a) eqn:E1;
    destruct (Int.eq (Int.repr (Znth i contents_a)) Int.mone) eqn:E2;
    simpl; f_equal; remember (Znth i contents_a) as x.
@@ -124,14 +135,14 @@ Proof.
          destruct H10.
          pose proof (Z.lt_trans (x mod Int.modulus) Int.modulus Int64.modulus H11 A0);
          split; try easy.
-      rewrite Int64.unsigned_one, L6; try rewrite !Int.unsigned_repr_eq;
+      rewrite Int64.unsigned_one, L5; try rewrite !Int.unsigned_repr_eq;
          try rewrite L3; try easy. 
       split.
       assert (A0 : 0 < Int.modulus) by easy.
       pose proof (Z.mod_pos_bound x Int.modulus A0); clear A0.
       rewrite (Z.add_nonneg_nonneg 1 (x mod Int.modulus)); easy.
       replace (32 mod Int.modulus) with (32) by easy.
-      apply L5 in E2.
+      apply L4 in E2.
       apply Zplus_lt_compat_l with (p := 1) in E2.
       replace (1 + (Int.modulus - 1)) with Int.modulus in E2 by lia.
       replace (two_p 32) with (Int.modulus) by easy; auto.
@@ -139,11 +150,11 @@ Proof.
       rewrite E2, Int.unsigned_mone.
       rewrite Int64.add_zero_l, !Int.unsigned_repr_eq.
       replace (32 mod Int.modulus) with (32) by easy.
-      rewrite L6; auto.
+      rewrite L5; auto.
       split; try easy.
    -  rewrite Int64.add_zero_l, !Int.unsigned_repr_eq.
       replace (32 mod Int.modulus) with (32) by easy.
-      rewrite L6; auto.
+      rewrite L5; auto.
       replace (two_p 32) with (Int.modulus) by easy.
       assert (A0 : 0 < Int.modulus) by easy.
       pose proof (Z.mod_pos_bound x Int.modulus A0); clear A0.
@@ -151,7 +162,10 @@ Proof.
    -  destruct  (allprev_mone i contents_a) eqn:E.
       autorewrite with sublist in *|-.
       hint.
-(* This is getting ugly. One need to prove that whatever its been done
+(* I proved (modulo the lemmas L1--L5) the part that the contents of
+ * temp is as efined in the loop invariant.
+ * The part that the contents of b are as in the loop invariant is ugly. 
+ * One need to prove that whatever its been done
  * in the code with the temp is does indeed the least significant 7 limbs
  * of B = A - (2^448 - 2^224 - 1). A Lemma (or several) are needed.
  *)
