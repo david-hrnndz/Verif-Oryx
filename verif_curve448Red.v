@@ -40,13 +40,25 @@ POST [ tvoid ]
    (*cont*)(map Vint (map Int.repr (int_to_list ((list_to_int contents_a) mod prime)))) r ;
             data_at Tsh (tarray tuint 14) (map Vint (map Int.repr contents_a)) a).
 
+
+Fixpoint allprev_mone_aux (n : nat) (a : list Z) : bool :=
+   match n with 
+   | O   => true
+   | S n' => (Int.eq (Int.repr (Znth (Z.of_nat n') a)) Int.mone) 
+            && allprev_mone_aux n' a
+   end.
+   
+Definition allprev_mone (i : Z) (a : list Z) := allprev_mone_aux (Z.to_nat i) a.
+
+            
 Definition curve448Red_INV_1    (a : val)  (contents_a : list Z) 
-                                (b : val)  (r : val) (shr : share)
-                                (h : Z) (gv : globals) 
+                     (b : val)  (r : val) (shr : share)
+                     (h : Z) (gv : globals) 
 := 
     (EX i : Z,
     (PROP   (Zlength contents_a = 14)
-    LOCAL   (temp _temp (Vlong (Int64.repr (Int.signed (Int.repr 1))));
+    LOCAL   (temp _temp (if allprev_mone i contents_a 
+               then Vlong Int64.one else Vlong Int64.zero);
             lvar _b (tarray tuint 14) b; 
             gvars gv; 
             temp _a a; temp _h (Vint (Int.repr h)))
@@ -61,44 +73,91 @@ Definition curve448Red_INV_1    (a : val)  (contents_a : list Z)
                 
 Definition Gprog : funspecs := ltac:(with_library prog [ curve448Red_spec ]).
 
+Lemma L1 (i : Z) (a : list Z) : allprev_mone (i + 1) a = 
+   Int.eq (Int.repr (Znth i a)) Int.mone && allprev_mone i a.
+Admitted.
+
+Lemma L2 :
+Int64.add Int64.one (Int64.repr (Int.modulus - 1)) = Int64.repr Int.modulus.
+Admitted.
+
+Lemma L3 (z : Z) : 
+0 <= z < Int64.modulus -> Int64.unsigned (Int64.repr z) = z.
+Admitted.
+
+Lemma L5 (z : Z) :
+Int.eq (Int.repr z) Int.mone = false -> z mod Int.modulus < Int.modulus - 1.
+Admitted.
+
+Lemma L6 (z n : Z) : 0 <= z < two_p n ->
+   Int64.shru (Int64.repr z) (Int64.repr n) = Int64.zero.
+Admitted.
+
 Lemma body_curve448Red : semax_body Vprog Gprog f_curve448Red curve448Red_spec.
 Proof.
-    start_function.
-    forward.
-    forward_for_simple_bound 7 
-        (curve448Red_INV_1 a contents_a v_b r shr h gv).
-    entailer!.
-    autorewrite with sublist.
-    apply derives_refl.
-    try repeat forward.
-    entailer!.
-    unfold Int64.shru.
-    remember (1 + Int.unsigned (Int.repr (Znth i contents_a))) as one_plus_a.
-    autorewrite with norm. 
-    try repeat f_equal.
-    (* Need to show that 1 = (1 + ith term in contents a) shifted 32 bits. *)
-    admit.
-    assert (data_at Tsh (tarray tuint 14)
-    (upd_Znth i
-       (sublist.sublist 0 i
-          (map Vint
-             (map Int.repr (int_to_list (list_to_int contents_a mod prime)))) ++
-        sublist.sublist i 14 undef14)
-       (Vint
-          (Int.repr
-             (Int64.unsigned
-                (Int64.repr
-                   (Z.land (1 + Int.unsigned (Int.repr (Znth i contents_a)))
-                      (Int.unsigned (Int.repr (-1))))))))) v_b
-  = data_at Tsh (tarray tuint 14)
-        (sublist.sublist 0 (i + 1)
-           (map Vint
-              (map Int.repr (int_to_list (list_to_int contents_a mod prime)))) ++
-         sublist.sublist (i + 1) 14 undef14) v_b).
-    f_equal.
-    Check Z.land.
-    (* Compute Int.unsigned (Int.repr (-1)). *)
-    destruct (1 + Int.unsigned (Int.repr (Znth i contents_a))). 
-    replace (Z.land 0 (Int.unsigned (Int.repr (-1)))) with (0) by auto. 
-    autorewrite with norm. 
-    (* Hmmmm *)
+   start_function.
+   forward.
+   forward_for_simple_bound 7 
+      (curve448Red_INV_1 a contents_a v_b r shr h gv).
+   entailer!.
+   apply derives_refl.
+   repeat forward.
+   entailer!.
+   rewrite L1.
+   destruct (allprev_mone i contents_a) eqn:E1;
+   destruct (Int.eq (Int.repr (Znth i contents_a)) Int.mone) eqn:E2;
+   simpl; f_equal; remember (Znth i contents_a) as x.
+   -  apply Int.same_if_eq in E2.
+      rewrite E2, Int.unsigned_mone.
+      rewrite L2.
+      rewrite Int64.shru_div_two_p, Int.unsigned_repr_eq.
+      replace (32 mod Int.modulus) with (32) by easy.
+      rewrite !Int64.unsigned_repr_eq.
+      replace (Int.modulus mod Int64.modulus) with (Int.modulus) by easy.
+      replace (32 mod Int64.modulus) with (32) by easy.
+      replace (Int.modulus / two_p 32) with 1 by easy; auto.
+   -  unfold Int64.add.
+      assert (A : 0 <= x mod Int.modulus < Int64.modulus).
+         assert (A0 : 0 < Int.modulus) by easy.
+         pose proof (Z.mod_pos_bound x Int.modulus A0); clear A0.
+         assert (A0 : Int.modulus < Int64.modulus) by easy.
+         destruct H10.
+         pose proof (Z.lt_trans (x mod Int.modulus) Int.modulus Int64.modulus H11 A0);
+         split; try easy.
+      rewrite Int64.unsigned_one, L6; try rewrite !Int.unsigned_repr_eq;
+         try rewrite L3; try easy. 
+      split.
+      assert (A0 : 0 < Int.modulus) by easy.
+      pose proof (Z.mod_pos_bound x Int.modulus A0); clear A0.
+      rewrite (Z.add_nonneg_nonneg 1 (x mod Int.modulus)); easy.
+      replace (32 mod Int.modulus) with (32) by easy.
+      apply L5 in E2.
+      apply Zplus_lt_compat_l with (p := 1) in E2.
+      replace (1 + (Int.modulus - 1)) with Int.modulus in E2 by lia.
+      replace (two_p 32) with (Int.modulus) by easy; auto.
+   -  apply Int.same_if_eq in E2.
+      rewrite E2, Int.unsigned_mone.
+      rewrite Int64.add_zero_l, !Int.unsigned_repr_eq.
+      replace (32 mod Int.modulus) with (32) by easy.
+      rewrite L6; auto.
+      split; try easy.
+   -  rewrite Int64.add_zero_l, !Int.unsigned_repr_eq.
+      replace (32 mod Int.modulus) with (32) by easy.
+      rewrite L6; auto.
+      replace (two_p 32) with (Int.modulus) by easy.
+      assert (A0 : 0 < Int.modulus) by easy.
+      pose proof (Z.mod_pos_bound x Int.modulus A0); clear A0.
+      apply H10.
+   -  destruct  (allprev_mone i contents_a) eqn:E.
+      autorewrite with sublist in *|-.
+      hint.
+(* This is getting ugly. One need to prove that whatever its been done
+ * in the code with the temp is does indeed the least significant 7 limbs
+ * of B = A - (2^448 - 2^224 - 1). A Lemma (or several) are needed.
+ *)
+
+
+
+   
+   
+   
