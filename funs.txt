@@ -31,4 +31,4 @@ curve448Swap
 curve448Select
     - Done. 
 curve448Comp
-    - In progress.
+    - Done.
