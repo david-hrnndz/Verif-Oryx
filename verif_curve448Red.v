@@ -94,7 +94,11 @@ Admitted.
 
 Lemma L3 (z : Z) : 
 0 <= z < Int64.modulus -> Int64.unsigned (Int64.repr z) = z.
-Admitted.
+Proof.
+   intros.
+   rewrite Int64.unsigned_repr_eq.
+   rewrite Z.mod_small; auto.
+Qed.
 
 Lemma L4 (z : Z) :
 Int.eq (Int.repr z) Int.mone = false -> z mod Int.modulus < Int.modulus - 1.
