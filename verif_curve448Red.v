@@ -36,7 +36,7 @@ PRE [ tptr tuint, tptr tuint, tuint ]
 POST [ tvoid ]
     PROP   ()
     RETURN ()                               
-    SEP    (data_at shr (tarray tuint 14) (* r contanis the representation of A mod p *)
+    SEP    (data_at shr (tarray tuint 14) (* r contains the representation of A mod p *)
    (*cont*)(map Vint (map Int.repr (int_to_list ((list_to_int contents_a) mod prime)))) r ;
             data_at Tsh (tarray tuint 14) (map Vint (map Int.repr contents_a)) a).
 
@@ -90,7 +90,9 @@ Qed.
 
 Lemma L2 :
 Int64.add Int64.one (Int64.repr (Int.modulus - 1)) = Int64.repr Int.modulus.
-Admitted.
+Proof.
+   auto.
+   Qed.
 
 Lemma L3 (z : Z) : 
 0 <= z < Int64.modulus -> Int64.unsigned (Int64.repr z) = z.
@@ -102,10 +104,12 @@ Qed.
 
 Lemma L4 (z : Z) :
 Int.eq (Int.repr z) Int.mone = false -> z mod Int.modulus < Int.modulus - 1.
-Admitted.
+Proof.
+   Admitted.
 
 Lemma L5 (z n : Z) : 0 <= z < two_p n ->
    Int64.shru (Int64.repr z) (Int64.repr n) = Int64.zero.
+Proof.
 Admitted.
 
 Lemma body_curve448Red : semax_body Vprog Gprog f_curve448Red curve448Red_spec.
@@ -167,7 +171,7 @@ Proof.
       autorewrite with sublist in *|-.
       hint.
 (* I proved (modulo the lemmas L1--L5) the part that the contents of
- * temp is as efined in the loop invariant.
+ * temp is as defined in the loop invariant.
  * The part that the contents of b are as in the loop invariant is ugly. 
  * One need to prove that whatever its been done
  * in the code with the temp is does indeed the least significant 7 limbs

@@ -3,6 +3,8 @@ Require Import curve448.
 Require Import stdpp.list.
 Require Import ZArith.
 Require Import compcert.lib.Coqlib.
+Require Import compcert.lib.Integers.
+Require Import list_lemmas.
 
 (* /**
  * @brief Conditional swap
@@ -36,8 +38,6 @@ Definition Vprog : varspecs.  mk_varspecs prog. Defined.
 
 Local Open Scope Z.
 
-Scheme Equality for list.
-
 Definition curve448Swap_spec : ident * funspec :=
 DECLARE _curve448Swap
 WITH a : val, sha : share, contents_a : list Z,
@@ -66,6 +66,9 @@ POST [ tvoid ]
                 else map Vint (map Int.repr contents_a)) b). 
             (* If c = 0, no swap. Else, swap. *)
 
+(* Loop invariant: 
+    If c = 0, then a = a and b = b.
+    If c = 1, then a and b are partially swapped up to index i. *)
 Definition curve448Swap_INV a contents_a sha b contents_b shb c:=
 (EX i : Z,
 (PROP   (Zlength contents_a = 14;
@@ -73,24 +76,14 @@ Definition curve448Swap_INV a contents_a sha b contents_b shb c:=
          forall x : Z, In x contents_a -> 0 ≤ x ≤ Int.max_unsigned;
          forall x : Z, In x contents_b -> 0 ≤ x ≤ Int.max_unsigned)
 LOCAL   (temp _a a; temp _b b; temp _mask (Vint (Int.repr (((c + 1) mod 2) - 1))))
-SEP     ( (* What is the loop invariant? 
-                Idea: 
-                 If c = 0, then a = a and b = b.
-                 If c = 1, then a and b are partially swapped up to index i. *)
-         if (Z.eqb c 0) then (
-            data_at sha (tarray tuint 14) (map Vint (map Int.repr contents_a)) a
-         )
-         else  (
-            data_at sha (tarray tuint 14) 
+SEP     ( if (Z.eqb c 0) 
+            then (data_at sha (tarray tuint 14) (map Vint (map Int.repr contents_a)) a)
+         else  (data_at sha (tarray tuint 14) 
             ((sublist.sublist 0 i (map Vint (map Int.repr contents_b)))
-            ++ sublist.sublist i 14 (map Vint (map Int.repr contents_a)))
-            a
-               );
-         if (Z.eqb c 0) then (
-            data_at shb (tarray tuint 14) (map Vint (map Int.repr contents_b)) b
-         )
-         else (
-            data_at shb (tarray tuint 14) 
+            ++ sublist.sublist i 14 (map Vint (map Int.repr contents_a))) a);
+         if (Z.eqb c 0) 
+            then (data_at shb (tarray tuint 14) (map Vint (map Int.repr contents_b)) b)
+         else  (data_at shb (tarray tuint 14) 
             ((sublist.sublist 0 i (map Vint (map Int.repr contents_a)))
             ++ sublist.sublist i 14 (map Vint (map Int.repr contents_b)))
             b
@@ -104,170 +97,128 @@ Proof.
     start_function.
     forward.
     forward_for_simple_bound 14 (curve448Swap_INV a contents_a sha b contents_b shb c).
-    entailer!.
+    - entailer!.
     destruct H3;
     rewrite H3; 
     f_equal;
     autorewrite with norm. 
-    replace (1 mod 2) with (1) by easy.
-    replace (1-1) with (0) by easy.
-    unfold Int.add.
-    (* Compute (Int.unsigned (Int.not (Int.repr 0)) + Int.unsigned (Int.repr 1)). *)
-    replace (Int.unsigned (Int.not (Int.repr 0)) + Int.unsigned (Int.repr 1)) with (2^32) by easy.
-    simpl.
-    (* Need to make coq understand that 2^32 is 0 here. *)
-    admit.
-    replace ((1 + 1) mod 2 - 1) with (-1) by easy.
-    unfold Int.add.
-    replace (Int.unsigned (Int.not (Int.repr 1))) with (4294967294) by easy.
-    replace ((4294967294 + Int.unsigned (Int.repr 1))) with (4294967295) by easy.
-    (* Need to make coq understand that 2^32-1  is -1 here*)
-    (* We are working modulo 2^32 because of C. *)
-    admit.
-    destruct H3; rewrite H3.
-    destruct (_ =? 0) eqn:E.
-    entailer!.
-    discriminate.
-    destruct (1 =? 0) eqn:E; try discriminate.
-    autorewrite with sublist.
-    cancel.
-    hint.
-    Intros.
+        + replace (1 mod 2) with (1) by easy.
+        replace (1-1) with (0) by easy.
+        unfold Int.add.
+        replace (Int.unsigned (Int.not (Int.repr 0)) + Int.unsigned (Int.repr 1)) with (2^32) by easy.
+        rewrite (Int.eqm_samerepr (0) (2^32)); auto.
+        unfold Int.eqm.
+        unfold Int.modulus.
+        replace (two_power_nat Int.wordsize) with (2^32) by easy.
+        unfold Zbits.eqmod.
+        exists (-1); lia.
+        + replace ((1 + 1) mod 2 - 1) with (-1) by easy.
+        unfold Int.add.
+        replace (Int.unsigned (Int.not (Int.repr 1))) with (2^32-2) by easy.
+        replace ((2^32-2 + Int.unsigned (Int.repr 1))) with (2^32-1) by easy.
+        rewrite (Int.eqm_samerepr (-1) (2^32-1)); auto.
+        unfold Int.eqm.
+        unfold Int.modulus.
+        unfold Zbits.eqmod.
+        exists (-1); easy.
+        + destruct H3; rewrite H3;
+        destruct (_ =? 0) eqn:E; 
+        try discriminate.
+        * entailer!.
+        * autorewrite with sublist; cancel.
+    - Intros.
     destruct (c =? 0) eqn:E.
-    forward.
-    forward.
-    forward.
-    forward.
-    forward.
-    forward.
-    forward.
-    entailer!.
-    rewrite Z.eqb_eq in E. 
-    rewrite E.
-    replace ((0 + 1) mod 2 - 1) with (0) by easy.
-    replace ((Int.and (Int.repr 0)
-    (Int.xor (Int.repr (Znth i contents_a))
-    (Int.repr (Znth i contents_b))))) with (Int.repr 0) by easy.
-    assert (data_at sha (tarray tuint 14)
-    (upd_Znth i (map Vint (map Int.repr contents_a))
-        (Vint (Int.xor (Int.repr (Znth i contents_a)) (Int.repr 0)))) a = data_at sha (tarray tuint 14) (map Vint (map Int.repr contents_a)) a ).
-    f_equal.
-    unfold Int.xor.
-    (* Compute (Int.repr (Z.lxor (Int.unsigned (Int.repr (2^32+1))) (Int.unsigned (Int.repr 0)))). *)
-    replace ((Int.repr
-    (Z.lxor (Int.unsigned (Int.repr (Znth i contents_a)))
-        (Int.unsigned (Int.repr 0))))) with (Int.repr (Znth i contents_a)).
-    list_simplify.
-    (* Search Z.lxor. *)
-    rewrite Z.lxor_0_r.
-    remember (Znth i contents_a) as n.
-    (* Search (Int.unsigned (Int.repr ( _ ))). *)
-    f_equal.
-    rewrite (Int.unsigned_repr); try lia.
-    assert (In (n) contents_a).
-    rewrite Heqn.
-    apply Znth_In; lia.
-    apply H1; assumption.
-    rewrite  H11.
-
-    assert (data_at shb (tarray tuint 14)
-    (upd_Znth i (map Vint (map Int.repr contents_b))
-        (Vint (Int.xor (Int.repr (Znth i contents_b)) (Int.repr 0)))) b
-    = data_at shb (tarray tuint 14) (map Vint (map Int.repr contents_b)) b
-    ).
-    f_equal.
-    unfold Int.xor.
-    replace ((Int.repr
-    (Z.lxor (Int.unsigned (Int.repr (Znth i contents_b)))
-        (Int.unsigned (Int.repr 0))))) with (Int.repr (Znth i contents_b)).
-    list_simplify.
-    rewrite Z.lxor_0_r.
-    remember (Znth i contents_b) as n.
-    (* Search (Int.unsigned (Int.repr ( _ ))). *)
-    f_equal.
-    rewrite (Int.unsigned_repr); try lia.
-    assert (In (n) contents_b).
-    rewrite Heqn.
-    apply Znth_In; lia.
-    apply H2; assumption.
-    rewrite  H12.
-    cancel.
-
-    forward.
-    entailer!.
-    autorewrite with sublist.
-    easy.
-
-    forward.
-    entailer!.
-    autorewrite with sublist.
-    easy.
-
-    forward.
-    forward.
-    forward.
-    forward.
-    forward.
-    entailer!.
-    rewrite Z.eqb_neq in E.
-    destruct H3. (* This starts with c = 0, but we had c≠0 so: *)
-    contradiction.
-    rewrite H3.
-    autorewrite with sublist.
-    simpl.
-    Compute ((Int.repr ((1 + 1) mod 2 - 1))).
-
-    assert (data_at sha (tarray tuint 14)
-    (sublist.sublist 0 i (map Vint (map Int.repr contents_b)) ++
-        upd_Znth 0 (sublist.sublist i 14 (map Vint (map Int.repr contents_a)))
-        (Vint
+        + repeat forward.
+        entailer!.
+        rewrite Z.eqb_eq in E. 
+        rewrite E.
+        replace ((0 + 1) mod 2 - 1) with (0) by easy.
+        replace ((Int.and (Int.repr 0)
+        (Int.xor (Int.repr (Znth i contents_a))
+        (Int.repr (Znth i contents_b))))) with (Int.repr 0) by easy.
+        assert ((upd_Znth i (map Vint (map Int.repr contents_a))
+                (Vint (Int.xor (Int.repr (Znth i contents_a)) (Int.repr 0))))
+                = (map Vint (map Int.repr contents_a))) as H_a.
+            list_simplify.
+            rewrite Int.xor_zero.
+            rewrite e.
+            easy.
+        assert ((upd_Znth i (map Vint (map Int.repr contents_b))
+                (Vint (Int.xor (Int.repr (Znth i contents_b)) (Int.repr 0))))
+                = (map Vint (map Int.repr contents_b))) as H_b.
+            list_simplify.
+            rewrite Int.xor_zero.
+            rewrite e.
+            easy.
+        rewrite  H_a, H_b; cancel.
+        + forward.
+            entailer!.
+            autorewrite with sublist.
+            easy.
+            forward.
+            entailer!.
+            autorewrite with sublist.
+            easy.
+        repeat forward.
+        entailer!.
+        rewrite Z.eqb_neq in E.
+        destruct H3. (* This starts with c = 0, but we had c≠0 so: *)
+        contradiction.
+        rewrite H3.
+        autorewrite with sublist.
+        simpl.
+        (* This entailment will be solved by showing (data_at ... a) and (data_at ... b) match
+            with what we said they would respectively. *)
+        assert ((sublist.sublist 0 i (map Vint (map Int.repr contents_b)) ++
+            upd_Znth 0 (sublist.sublist i 14 (map Vint (map Int.repr contents_a)))
+            (Vint
             (Int.xor (Int.repr (Znth i contents_a))
                 (Int.and (Int.repr ((1 + 1) mod 2 - 1))
-                (Int.xor (Int.repr (Znth i contents_a))
-                    (Int.repr (Znth i contents_b))))))) a
-    = data_at sha (tarray tuint 14)
-    (sublist.sublist 0 (i + 1) (map Vint (map Int.repr contents_b)) ++
-        sublist.sublist (i + 1) 14 (map Vint (map Int.repr contents_a))) a).   
-    f_equal.
-    (* list_simplify. *)
-    (* f_equal. *)
-    unfold Int.xor.
-    unfold Int.and.
-    (* Compute (Int.unsigned (Int.repr ((1 + 1) mod 2 - 1))). *)
-    replace (Int.unsigned (Int.repr ((1 + 1) mod 2 - 1))) with 4294967295 by easy.
-    admit.
-    assert (
-        data_at shb (tarray tuint 14)
-    (sublist.sublist 0 i (map Vint (map Int.repr contents_a)) ++
-    upd_Znth 0 (sublist.sublist i 14 (map Vint (map Int.repr contents_b)))
-        (Vint
+                (Int.xor (Int.repr (Znth i contents_a)) (Int.repr (Znth i contents_b))))))) 
+        = (sublist.sublist 0 (i + 1) (map Vint (map Int.repr contents_b)) ++
+        sublist.sublist (i + 1) 14 (map Vint (map Int.repr contents_a)))) as H_a.   
+        rewrite <- !(sublist_rejoin 0 i (i+1)) by list_simplify; try split; try lia.
+        rewrite !sublist_len_1 by list_simplify.
+        replace  ((1 + 1) mod 2 - 1) with (-1) by easy.
+        rewrite <- app_assoc; f_equal.
+        assert (Zlength ((map Vint (map Int.repr contents_a))) = 14) as Hlen_a by list_solve.
+        rewrite <- Hlen_a at 2.
+        rewrite <- sublist_update_0th by list_simplify.
+        f_equal. rewrite Hlen_a. reflexivity.
+        autorewrite with sublist.
+        replace ((Int.repr (-1))) with (Int.mone) by easy.
+        rewrite Int.and_mone_l.
+        rewrite <- Int.xor_assoc.
+        rewrite Int.xor_idem.   
+        rewrite Int.xor_zero_l.
+        reflexivity.
+        assert ((sublist.sublist 0 i (map Vint (map Int.repr contents_a)) ++
+        upd_Znth 0 (sublist.sublist i 14 (map Vint (map Int.repr contents_b)))
+            (Vint
             (Int.xor (Int.repr (Znth i contents_b))
-            (Int.and (Int.repr ((1 + 1) mod 2 - 1))
-                (Int.xor (Int.repr (Znth i contents_a)) (Int.repr (Znth i contents_b))))))) b
-    = data_at shb (tarray tuint 14)
-    (sublist.sublist 0 (i + 1) (map Vint (map Int.repr contents_a)) ++
-        sublist.sublist (i + 1) 14 (map Vint (map Int.repr contents_b))) b
-    ).
-    f_equal.
-    unfold Int.xor.
-    unfold Int.and.
-    replace (Int.unsigned (Int.repr ((1 + 1) mod 2 - 1))) with 4294967295 by easy.   
-    admit.
-    
-    rewrite H14, H15. 
-    cancel.
-
-    entailer!.
-
-    destruct (c =? 0);
-    autorewrite with sublist.
-
-    cancel.
-
-    cancel.
-
-    Qed.
-
-
-
-    (* About Z.lxor. *)
+                (Int.and (Int.repr ((1 + 1) mod 2 - 1))
+                (Int.xor (Int.repr (Znth i contents_a)) (Int.repr (Znth i contents_b)))))))
+        = (sublist.sublist 0 (i + 1) (map Vint (map Int.repr contents_a)) ++
+        sublist.sublist (i + 1) 14 (map Vint (map Int.repr contents_b)))) as H_b.
+        rewrite <- !(sublist_rejoin 0 i (i+1)) by list_simplify; try split; try lia.
+        rewrite !sublist_len_1 by list_simplify.
+        replace  ((1 + 1) mod 2 - 1) with (-1) by easy.
+        rewrite <- app_assoc; f_equal.
+        assert (Zlength ((map Vint (map Int.repr contents_b))) = 14) as Hlen_b by list_solve.
+        rewrite <- Hlen_b at 2.
+        rewrite <- sublist_update_0th by list_simplify.
+        f_equal. rewrite Hlen_b. reflexivity.
+        autorewrite with sublist.
+        replace ((Int.repr (-1))) with (Int.mone) by easy.
+        rewrite Int.and_mone_l.
+        replace (Int.xor (Int.repr (Znth i contents_a)) (Int.repr (Znth i contents_b))) 
+            with (Int.xor (Int.repr (Znth i contents_b)) (Int.repr (Znth i contents_a))).
+        rewrite <- Int.xor_assoc.
+        rewrite Int.xor_idem.
+        rewrite Int.xor_zero_l.
+        reflexivity.
+        rewrite Int.xor_commut; easy.
+        rewrite H_a, H_b; cancel.
+    - entailer!.
+    destruct (c =? 0); autorewrite with sublist; easy.
+Qed.

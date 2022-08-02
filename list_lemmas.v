@@ -55,3 +55,12 @@ Proof.
       rewrite <- !Zpred_succ in H.
       auto.
 Qed.
+
+Lemma sublist_update_0th :
+forall {A} (l: list A) lo v,
+0 <= lo < Zlength l -> 
+upd_Znth 0 (sublist.sublist lo (Zlength l) l) v = [v] ++ sublist.sublist (lo+1) (Zlength l) l.
+Proof.
+  intros.
+  list_simplify.
+  Qed.
