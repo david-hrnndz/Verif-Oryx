@@ -77,7 +77,6 @@ SEP     ( (* What is the loop invariant?
                 Idea: 
                  If c = 0, then a = a and b = b.
                  If c = 1, then a and b are partially swapped up to index i. *)
-<<<<<<< HEAD
          if (Z.eqb c 0) then (
             data_at sha (tarray tuint 14) (map Vint (map Int.repr contents_a)) a
          )
@@ -269,12 +268,6 @@ Proof.
 
     Qed.
 
-=======
-         data_at Tsh (tarray tuint 14) (map Vint (map Int.repr contents_a)) a;
-         data_at Tsh (tarray tuint 14) (map Vint (map Int.repr contents_b)) b
-        )))%assert.
-
->>>>>>> 6c1af172651adfdb937395e059af52a6acd19906
 
 
     (* About Z.lxor. *)
