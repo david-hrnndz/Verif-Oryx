@@ -102,15 +102,75 @@ Proof.
    rewrite Z.mod_small; auto.
 Qed.
 
+Lemma  L4' (z : Z): 
+Int.eq (Int.repr z) Int.mone = false -> z mod Int.modulus ≠ Int.modulus - 1.
+Proof.
+   intros.
+   apply int_eq_false_e in H.
+   unfold "≠".
+   intros.
+   replace (Int.modulus - 1) with (Int.modulus - 1 mod Int.modulus) in H0.
+   assert (Int.repr z = Int.repr (Int.modulus - 1)).
+   apply modulo_samerepr.
+   apply H0.
+   replace (Int.repr (Int.modulus - 1)) with (Int.repr (- 1)) in H1.
+   contradiction.
+   rewrite modulo_samerepr with (y:= Int.modulus - 1); reflexivity.
+   apply Zmod_small with (a := Int.modulus - 1) (n:= Int.modulus).
+   easy.
+Qed.
+
 Lemma L4 (z : Z) :
 Int.eq (Int.repr z) Int.mone = false -> z mod Int.modulus < Int.modulus - 1.
 Proof.
-   Admitted.
+   intros. 
+   apply int_eq_false_e in H.
+   unfold Int.mone in H.
+   apply Znot_ge_lt.
+   unfold not.
+   intros.
+   assert (Int.modulus ≠ 0) by easy.
+   apply Z.mod_bound_or with (a := z) in H1.
+   destruct H1.
+   destruct H1.
+   assert (z mod Int.modulus <= Int.modulus - 1).
+   apply Zlt_succ_le.
+   replace (Z.succ (Int.modulus - 1)) with (Int.modulus) by easy.
+   assumption.
+   assert ( z mod Int.modulus = Int.modulus - 1). 
+   apply Z.ge_le in H0.
+   apply Z.le_antisymm; assumption.
+   replace (Int.modulus - 1) with (- 1 mod Int.modulus) in H4 by easy.
+   apply modulo_samerepr in H4.
+   contradiction.
+   destruct H1.
+   assert (Int.modulus < 0).
+   apply Z.lt_le_trans with (m:= z mod Int.modulus); assumption.
+   discriminate H3. 
+   Qed.
 
-Lemma L5 (z n : Z) : 0 <= z < two_p n ->
-   Int64.shru (Int64.repr z) (Int64.repr n) = Int64.zero.
+Lemma L5 (z : Z) : 0 <= z < two_p 32 ->
+   Int64.shru (Int64.repr z) (Int64.repr 32) = Int64.zero.
 Proof.
-Admitted.
+   intros.
+   rewrite Int64.shru_div_two_p. 
+   assert (Int64.unsigned (Int64.repr z) / two_p (Int64.unsigned (Int64.repr 32)) = 0).
+   rewrite Zdiv_small; try easy.
+   split.
+   destruct H.
+   rewrite L3; try easy.
+   split; try easy.
+   assert ((two_p 32) < Int64.modulus) by easy.
+   apply Z.lt_trans with (two_p 32); assumption.
+   replace (Int64.unsigned (Int64.repr 32)) with 32 by easy.
+   destruct H.
+   rewrite L3; try easy.
+   split; try easy.
+   assert ((two_p 32) < Int64.modulus) by easy.
+   apply Z.lt_trans with (two_p 32); assumption.
+   rewrite H0. easy.
+   Qed. 
+
 
 Lemma body_curve448Red : semax_body Vprog Gprog f_curve448Red curve448Red_spec.
 Proof.
