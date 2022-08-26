@@ -557,8 +557,9 @@ Proof.
    cancel.
 
 
-(* Need Red. *)
-
+(* After verifying curve448Red, add it to Gprog and then perform 
+   forward_call with it. *)
+   
 
 
 

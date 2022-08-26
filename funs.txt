@@ -2,26 +2,37 @@ curve448SetInt
     - Done.
 curve448Add
     - In progress (specified, proving loop body)
+      Mimic what was done in curve448AddInt with the is_big and added_list functions.
 curve448AddInt
     - In progress (proved loop body!)
+      Perform a forward_call once Red is done. 
 curve448Sub
-    - 
+    - Not done.
+      Mimic what was done in curve448Add. Do curve448SubInt first. 
 curve448SubInt
-    - 
+    - Not done.
+      Mimic what was done in curve448AddInt.
 curve448Mul
-    - 
+    - Not done.
+      Hard. Do curve448MulInt first.
 curve448MulInt
-    - 
+    - Not done.
+      Hard.
 curve448Sqr
-    - 
+    - Not done.
+      Easy after curve448Mul is done. Simple forward_call.
 curve448Pwr2
-    - 
+    - Not done.
+      Somehwat easy after curve448Sqr is done. 
+      Hard part might be the loop invariant.
 curve448Red
     - In progress (specified, proving loop body). 
 curve448Inv
-    - 
+    - Not done.
+      Should be many forward_calls. 
 curve448Sqrt
-    - 
+    - Not done.
+      Should be many forward_calls.
 curve448Copy
     - Done. 
 curve448Swap

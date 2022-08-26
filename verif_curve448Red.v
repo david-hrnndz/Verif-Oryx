@@ -14,7 +14,6 @@ Local Open Scope Z.
 (* curve448Red specification 
    for proof see verif_curve448Red_proofattempt.v *)
 
-
 Definition prime: Z := 2^448 - 2^224 - 1.
  
 Definition undef14 := 
