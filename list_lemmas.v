@@ -64,3 +64,42 @@ Proof.
   intros.
   list_simplify.
   Qed.
+
+Lemma sublist_update_0th_gen :
+forall {A} (l: list A) lo hi v,
+0 <= lo < hi -> 
+hi <= Zlength l -> 
+upd_Znth 0 (sublist.sublist lo hi l) v = [v] ++ sublist.sublist (lo+1) (hi) l.
+Proof.
+  intros.
+  destruct H. 
+  unfold upd_Znth. if_tac.
+  - simpl. replace (0+1) with (1) by lia.
+    f_equal.
+    rewrite Zlength_sublist; try easy.
+    rewrite sublist_sublist; try easy; try lia.
+    list_solve.
+    split; try lia.
+  - destruct H2.
+    discriminate H2.   
+    unfold not in H2.
+    exfalso.
+    apply H2.
+    rewrite Zlength_sublist; try easy.
+    rewrite Z.lt_0_sub.
+    assumption.
+    split; try lia.
+  Qed.
+
+Lemma upd_list_app_upper (i : Z) (l1 l2 : list val) (x : val) :
+Zlength l1 <= i ->
+upd_Znth i (l1 ++ l2) x = l1 ++ (upd_Znth (i-(Zlength l1)) l2) x.
+Proof. intros. list_simplify. Qed.
+
+Lemma Znth_map_Vint_map_Int_repr:
+forall (i : Z) (l : list Z), 
+0 <= i < Zlength l ->
+Znth i (map Vint (map Int.repr l)) = Vint (Int.repr (Znth i l)).
+Proof.
+  list_simplify. 
+Qed.

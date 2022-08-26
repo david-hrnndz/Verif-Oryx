@@ -133,8 +133,8 @@ void curve448Sub(uint32_t *r, const uint32_t *a, const uint32_t *b)
       r[i] = temp & 0xFFFFFFFF;
       temp >>= 32;
    }
-
-   for(temp -= 1, i = 7; i < 14; i++)
+   temp -= 1;
+   for(i = 7; i < 14; i++)
    {
       temp += a[i];
       temp -= b[i];

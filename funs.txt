@@ -1,9 +1,9 @@
 curve448SetInt
     - Done.
 curve448Add
-    - 
+    - In progress (specified, proving loop body)
 curve448AddInt
-    - 
+    - In progress (proved loop body!)
 curve448Sub
     - 
 curve448SubInt
@@ -17,7 +17,7 @@ curve448Sqr
 curve448Pwr2
     - 
 curve448Red
-    - In progress. 
+    - In progress (specified, proving loop body). 
 curve448Inv
     - 
 curve448Sqrt

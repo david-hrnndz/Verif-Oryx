@@ -102,32 +102,31 @@ Proof.
     rewrite H3; 
     f_equal;
     autorewrite with norm. 
-        + replace (1 mod 2) with (1) by easy.
-        replace (1-1) with (0) by easy.
-        unfold Int.add.
-        replace (Int.unsigned (Int.not (Int.repr 0)) + Int.unsigned (Int.repr 1)) with (2^32) by easy.
-        rewrite (Int.eqm_samerepr (0) (2^32)); auto.
-        unfold Int.eqm.
-        unfold Int.modulus.
-        replace (two_power_nat Int.wordsize) with (2^32) by easy.
-        unfold Zbits.eqmod.
-        exists (-1); lia.
-        + replace ((1 + 1) mod 2 - 1) with (-1) by easy.
-        unfold Int.add.
-        replace (Int.unsigned (Int.not (Int.repr 1))) with (2^32-2) by easy.
-        replace ((2^32-2 + Int.unsigned (Int.repr 1))) with (2^32-1) by easy.
-        rewrite (Int.eqm_samerepr (-1) (2^32-1)); auto.
-        unfold Int.eqm.
-        unfold Int.modulus.
-        unfold Zbits.eqmod.
-        exists (-1); easy.
-        + destruct H3; rewrite H3;
-        destruct (_ =? 0) eqn:E; 
-        try discriminate.
-        * entailer!.
-        * autorewrite with sublist; cancel.
-    - Intros.
-    destruct (c =? 0) eqn:E.
+        +   autorewrite with sublist.
+            unfold Int.add.
+            replace (Int.unsigned (Int.not (Int.repr 0)) + Int.unsigned (Int.repr 1)) with (2^32) by easy.
+            rewrite (Int.eqm_samerepr (0) (2^32)); auto.
+            unfold Int.eqm.
+            unfold Int.modulus.
+            replace (two_power_nat Int.wordsize) with (2^32) by easy.
+            unfold Zbits.eqmod.
+            exists (-1); lia.
+        +   replace ((1 + 1) mod 2 - 1) with (-1) by easy.
+            unfold Int.add.
+            replace (Int.unsigned (Int.not (Int.repr 1))) with (2^32-2) by easy.
+            replace ((2^32-2 + Int.unsigned (Int.repr 1))) with (2^32-1) by easy.
+            rewrite (Int.eqm_samerepr (-1) (2^32-1)); auto.
+            unfold Int.eqm.
+            unfold Int.modulus.
+            unfold Zbits.eqmod.
+            exists (-1); easy.
+        +   destruct H3; rewrite H3;
+            destruct (_ =? 0) eqn:E; 
+            try discriminate.
+                * entailer!.
+                * autorewrite with sublist; cancel.
+    -   Intros.
+        destruct (c =? 0) eqn:E.
         + repeat forward.
         entailer!.
         rewrite Z.eqb_eq in E. 

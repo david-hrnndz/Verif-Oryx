@@ -4,11 +4,15 @@ Require Import list_int_functions.
 Require Import stdpp.list.
 Require Import ZArith.
 Require Import compcert.lib.Coqlib.
+Require Import list_lemmas.
 
 Instance CompSpecs : compspecs. Proof. make_compspecs prog. Defined.
 Definition Vprog : varspecs.  mk_varspecs prog. Defined.
 
 Local Open Scope Z.
+
+(* curve448Red specification 
+   for proof see verif_curve448Red_proofattempt.v *)
 
 
 Definition prime: Z := 2^448 - 2^224 - 1.
@@ -50,11 +54,9 @@ Fixpoint allprev_mone_aux (n : nat) (a : list Z) : bool :=
    
 Definition allprev_mone (i : Z) (a : list Z) := allprev_mone_aux (Z.to_nat i) a.
 
-            
 Definition curve448Red_INV_1    (a : val)  (contents_a : list Z) 
                      (b : val)  (r : val) (shr : share)
-                     (h : Z) (gv : globals) 
-:= 
+                     (h : Z) (gv : globals) := 
     (EX i : Z,
     (PROP   (Zlength contents_a = 14)
     LOCAL   (temp _temp (if allprev_mone i contents_a 
@@ -66,180 +68,9 @@ Definition curve448Red_INV_1    (a : val)  (contents_a : list Z)
                 data_at_ shr (tarray tuint 14) r;
                 data_at Tsh (tarray tuint 14) (map Vint (map Int.repr contents_a)) a; 
                 data_at Tsh (tarray tuint 14)  
-                ((sublist.sublist 0 i (map Vint (map Int.repr (int_to_list ((list_to_int contents_a) mod prime)))))
-                ++ sublist.sublist i 14 undef14)
-             b
+                ((sublist.sublist 0 i (map Vint (map Int.repr (int_to_list ((list_to_int contents_a) - prime)))))
+                ++ sublist.sublist i 14 undef14) b
             )))%assert.
-                
+
 Definition Gprog : funspecs := ltac:(with_library prog [ curve448Red_spec ]).
 
-
-Lemma L1 (i : Z) (a : list Z) : 0 <= i -> 
-   allprev_mone (i + 1) a = 
-   Int.eq (Int.repr (Znth i a)) Int.mone && allprev_mone i a.
-Proof.
-   intros.
-   unfold allprev_mone.
-   replace (i + 1) with (Z.succ i) by easy.
-   rewrite Z2Nat.inj_succ by apply H.
-   assert (i = Z.of_nat (Z.to_nat i)).
-      rewrite Z2Nat.id; auto.
-   rewrite H0 at 2.
-   induction (Z.to_nat i); auto.
-Qed.
-
-Lemma L2 :
-Int64.add Int64.one (Int64.repr (Int.modulus - 1)) = Int64.repr Int.modulus.
-Proof.
-   auto.
-   Qed.
-
-Lemma L3 (z : Z) : 
-0 <= z < Int64.modulus -> Int64.unsigned (Int64.repr z) = z.
-Proof.
-   intros.
-   rewrite Int64.unsigned_repr_eq.
-   rewrite Z.mod_small; auto.
-Qed.
-
-Lemma  L4' (z : Z): 
-Int.eq (Int.repr z) Int.mone = false -> z mod Int.modulus ≠ Int.modulus - 1.
-Proof.
-   intros.
-   apply int_eq_false_e in H.
-   unfold "≠".
-   intros.
-   replace (Int.modulus - 1) with (Int.modulus - 1 mod Int.modulus) in H0.
-   assert (Int.repr z = Int.repr (Int.modulus - 1)).
-   apply modulo_samerepr.
-   apply H0.
-   replace (Int.repr (Int.modulus - 1)) with (Int.repr (- 1)) in H1.
-   contradiction.
-   rewrite modulo_samerepr with (y:= Int.modulus - 1); reflexivity.
-   apply Zmod_small with (a := Int.modulus - 1) (n:= Int.modulus).
-   easy.
-Qed.
-
-Lemma L4 (z : Z) :
-Int.eq (Int.repr z) Int.mone = false -> z mod Int.modulus < Int.modulus - 1.
-Proof.
-   intros. 
-   apply int_eq_false_e in H.
-   unfold Int.mone in H.
-   apply Znot_ge_lt.
-   unfold not.
-   intros.
-   assert (Int.modulus ≠ 0) by easy.
-   apply Z.mod_bound_or with (a := z) in H1.
-   destruct H1.
-   destruct H1.
-   assert (z mod Int.modulus <= Int.modulus - 1).
-   apply Zlt_succ_le.
-   replace (Z.succ (Int.modulus - 1)) with (Int.modulus) by easy.
-   assumption.
-   assert ( z mod Int.modulus = Int.modulus - 1). 
-   apply Z.ge_le in H0.
-   apply Z.le_antisymm; assumption.
-   replace (Int.modulus - 1) with (- 1 mod Int.modulus) in H4 by easy.
-   apply modulo_samerepr in H4.
-   contradiction.
-   destruct H1.
-   assert (Int.modulus < 0).
-   apply Z.lt_le_trans with (m:= z mod Int.modulus); assumption.
-   discriminate H3. 
-   Qed.
-
-Lemma L5 (z : Z) : 0 <= z < two_p 32 ->
-   Int64.shru (Int64.repr z) (Int64.repr 32) = Int64.zero.
-Proof.
-   intros.
-   rewrite Int64.shru_div_two_p. 
-   assert (Int64.unsigned (Int64.repr z) / two_p (Int64.unsigned (Int64.repr 32)) = 0).
-   rewrite Zdiv_small; try easy.
-   split.
-   destruct H.
-   rewrite L3; try easy.
-   split; try easy.
-   assert ((two_p 32) < Int64.modulus) by easy.
-   apply Z.lt_trans with (two_p 32); assumption.
-   replace (Int64.unsigned (Int64.repr 32)) with 32 by easy.
-   destruct H.
-   rewrite L3; try easy.
-   split; try easy.
-   assert ((two_p 32) < Int64.modulus) by easy.
-   apply Z.lt_trans with (two_p 32); assumption.
-   rewrite H0. easy.
-   Qed. 
-
-
-Lemma body_curve448Red : semax_body Vprog Gprog f_curve448Red curve448Red_spec.
-Proof.
-   start_function.
-   forward.
-   forward_for_simple_bound 7 
-      (curve448Red_INV_1 a contents_a v_b r shr h gv).
-   entailer!.
-   apply derives_refl.
-   repeat forward.
-   entailer!.
-   rewrite L1 by easy.
-   destruct (allprev_mone i contents_a) eqn:E1;
-   destruct (Int.eq (Int.repr (Znth i contents_a)) Int.mone) eqn:E2;
-   simpl; f_equal; remember (Znth i contents_a) as x.
-   -  apply Int.same_if_eq in E2.
-      rewrite E2, Int.unsigned_mone.
-      rewrite L2.
-      rewrite Int64.shru_div_two_p, Int.unsigned_repr_eq.
-      replace (32 mod Int.modulus) with (32) by easy.
-      rewrite !Int64.unsigned_repr_eq.
-      replace (Int.modulus mod Int64.modulus) with (Int.modulus) by easy.
-      replace (32 mod Int64.modulus) with (32) by easy.
-      replace (Int.modulus / two_p 32) with 1 by easy; auto.
-   -  unfold Int64.add.
-      assert (A : 0 <= x mod Int.modulus < Int64.modulus).
-         assert (A0 : 0 < Int.modulus) by easy.
-         pose proof (Z.mod_pos_bound x Int.modulus A0); clear A0.
-         assert (A0 : Int.modulus < Int64.modulus) by easy.
-         destruct H10.
-         pose proof (Z.lt_trans (x mod Int.modulus) Int.modulus Int64.modulus H11 A0);
-         split; try easy.
-      rewrite Int64.unsigned_one, L5; try rewrite !Int.unsigned_repr_eq;
-         try rewrite L3; try easy. 
-      split.
-      assert (A0 : 0 < Int.modulus) by easy.
-      pose proof (Z.mod_pos_bound x Int.modulus A0); clear A0.
-      rewrite (Z.add_nonneg_nonneg 1 (x mod Int.modulus)); easy.
-      replace (32 mod Int.modulus) with (32) by easy.
-      apply L4 in E2.
-      apply Zplus_lt_compat_l with (p := 1) in E2.
-      replace (1 + (Int.modulus - 1)) with Int.modulus in E2 by lia.
-      replace (two_p 32) with (Int.modulus) by easy; auto.
-   -  apply Int.same_if_eq in E2.
-      rewrite E2, Int.unsigned_mone.
-      rewrite Int64.add_zero_l, !Int.unsigned_repr_eq.
-      replace (32 mod Int.modulus) with (32) by easy.
-      rewrite L5; auto.
-      split; try easy.
-   -  rewrite Int64.add_zero_l, !Int.unsigned_repr_eq.
-      replace (32 mod Int.modulus) with (32) by easy.
-      rewrite L5; auto.
-      replace (two_p 32) with (Int.modulus) by easy.
-      assert (A0 : 0 < Int.modulus) by easy.
-      pose proof (Z.mod_pos_bound x Int.modulus A0); clear A0.
-      apply H10.
-   -  destruct  (allprev_mone i contents_a) eqn:E.
-      autorewrite with sublist in *|-.
-      hint.
-(* I proved (modulo the lemmas L1--L5) the part that the contents of
- * temp is as defined in the loop invariant.
- * The part that the contents of b are as in the loop invariant is ugly. 
- * One need to prove that whatever its been done
- * in the code with the temp is does indeed the least significant 7 limbs
- * of B = A - (2^448 - 2^224 - 1). A Lemma (or several) are needed.
- *)
-
-
-
-   
-   
-   
